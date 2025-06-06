@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      # Supabase
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      # Stripe
+      - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - STRIPE_MONTHLY_PRICE_ID=${STRIPE_MONTHLY_PRICE_ID}
+      - STRIPE_SINGLE_PRICE_ID=${STRIPE_SINGLE_PRICE_ID}
+      # AI APIs
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # Kit (ConvertKit)
+      - KIT_API_KEY=${KIT_API_KEY}
+      - KIT_API_SECRET=${KIT_API_SECRET}
+      - KIT_DEFAULT_FORM_ID=${KIT_DEFAULT_FORM_ID}
+      # Upstash Redis
+      - UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL}
+      - UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN}
+      # Application
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - ADMIN_EMAIL=inquire@resumeably.ai
+    restart: unless-stopped
+    networks:
+      - resumeably-network
+
+  stripe-cli:
+    image: stripe/stripe-cli:latest
+    command: listen --forward-to http://app:3000/api/stripe/webhook --skip-verify
+    environment:
+      - STRIPE_API_KEY=${STRIPE_SECRET_KEY}
+    depends_on:
+      - app
+    networks:
+      - resumeably-network
+
+networks:
+  resumeably-network:
+    driver: bridge
