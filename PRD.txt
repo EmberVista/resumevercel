@@ -1,0 +1,859 @@
+PRODUCT REQUIREMENTS DOCUMENT
+RESUMEABLY.AI - NEXT.JS FULL-STACK IMPLEMENTATION
+
+================================================================================
+EXECUTIVE SUMMARY
+================================================================================
+
+Product Name: Resumeably.ai
+Domain: resumeably.ai (owned, not yet deployed)
+Version: 1.0
+Platform: Next.js 14 Full-Stack Application
+Purpose: AI-powered resume optimization platform helping job seekers pass ATS systems
+
+Key Features:
+- Free AI resume analysis (Claude 3.5 Haiku)
+- Premium AI resume rewriting service (Claude 4 Sonnet)
+- One-time payment ($17) or monthly subscription ($27)
+- Instant DOCX/PDF generation after payment
+- User dashboard with resume history
+
+================================================================================
+TECHNICAL ARCHITECTURE
+================================================================================
+
+Stack:
+- Framework: Next.js 14 with App Router
+- Language: TypeScript
+- Database: Supabase (PostgreSQL)
+- Authentication: Supabase Auth
+- Payments: Stripe
+- AI: Anthropic Claude API (primary), OpenAI GPT-4 (fallback)
+- File Storage: Supabase Storage
+- Queue: Upstash (Redis-based queue)
+- Email: Kit (formerly ConvertKit) for marketing automation
+- Containerization: Docker with docker-compose
+- Deployment: Vercel (production), Docker (local development)
+
+Directory Structure:
+/app
+  /(auth)
+    /login/page.tsx
+    /register/page.tsx
+  /(dashboard)
+    /dashboard/page.tsx
+    /account/page.tsx
+  /(admin)
+    /admin/page.tsx
+    /admin/users/page.tsx
+    /admin/analytics/page.tsx
+    /admin/payments/page.tsx
+  /(marketing)
+    /page.tsx (homepage)
+    /pricing/page.tsx
+    /privacy/page.tsx
+    /terms/page.tsx
+  /api
+    /analyze/route.ts
+    /generate/route.ts
+    /stripe/webhook/route.ts
+    /kit/webhook/route.ts
+  /layout.tsx
+  /providers.tsx
+/components
+  /ui (shadcn/ui components)
+  /resume
+    /UploadForm.tsx
+    /AnalysisResults.tsx
+    /ResumeViewer.tsx
+  /payment
+    /CheckoutButton.tsx
+    /PricingCard.tsx
+  /email
+    /LeadCapture.tsx
+    /NewsletterSignup.tsx
+/lib
+  /supabase
+    /client.ts
+    /server.ts
+    /middleware.ts
+  /stripe
+    /client.ts
+    /server.ts
+  /kit
+    /client.ts
+    /automations.ts
+  /ai
+    /analyzer.ts
+    /rewriter.ts
+  /utils
+    /file-processor.ts
+    /resume-generator.ts
+/types
+  /database.ts
+  /api.ts
+/docker
+  /Dockerfile
+  /docker-compose.yml
+  /docker-compose.dev.yml
+  /docker-compose.test.yml
+  /.dockerignore
+/tests
+  /e2e
+    /flows
+      /free-analysis.spec.ts
+      /payment.spec.ts
+      /generation.spec.ts
+    /mobile
+      /responsive.spec.ts
+  /fixtures
+    /resumes
+      /valid-resume.pdf
+      /valid-resume.docx
+      /large-resume.pdf
+      /corrupted.pdf
+    /job-descriptions
+      /software-engineer.txt
+      /marketing-manager.txt
+      /data-analyst.txt
+  /unit
+    /components
+    /utils
+  /integration
+    /api
+  /helpers
+    /test-data.ts
+    /auth-helpers.ts
+    /upload-helpers.ts
+
+================================================================================
+USER FLOWS
+================================================================================
+
+1. FREE ANALYSIS FLOW
+   - User lands on homepage (mobile-optimized with single-column layout)
+   - Uploads resume (required) and optionally pastes job description
+   - If no job description: Generic ATS analysis with industry best practices
+   - If job description provided: Targeted analysis with keyword matching
+   - Server action processes file → extracts text
+   - AI analyzes resume (Claude 3.5 Haiku) with rich, actionable insights
+   - Results shown with ATS score (1-100) + specific recommendations
+   - Inline email signup form for free resume tips (Kit integration, no popups)
+   - CTA to create account for premium rewrite
+
+2. REGISTRATION FLOW
+   - User clicks "Get Premium Rewrite"
+   - Redirected to /register - if already logged in, redirect to dashboard
+   - Enters email + password
+   - Supabase Auth creates account
+   - Auto-login and redirect to checkout
+
+3. PAYMENT FLOW
+   - User sees pricing options
+   - Clicks checkout → Stripe Checkout
+   - Completes payment
+   - Webhook updates user status
+   - Redirect to dashboard with success message
+
+4. PREMIUM GENERATION FLOW
+   - Dashboard shows "Generate Resume" button
+   - Click triggers server action
+   - Queue job for AI rewriting
+   - Real-time updates via Server-Sent Events
+   - DOCX/PDF generated and stored
+   - Download links appear
+
+5. RETURNING USER FLOW
+   - Login → Dashboard
+   - See all past resumes
+   - Can re-download or generate new ones
+   - Subscription users: unlimited generations
+   - One-time users: pay per resume
+
+6. ADMIN DASHBOARD FLOW
+   - Login with inquire@resumeably.ai
+   - Access /admin route (protected)
+   - View real-time analytics
+   - Manage users and subscriptions
+   - Process refunds
+   - Monitor system health
+
+7. DATA DELETION FLOW
+   - User requests account deletion
+   - Confirm deletion intent
+   - Cancel Stripe subscription (if active)
+   - Delete user data from Supabase
+   - Remove stored files
+   - Send confirmation email
+
+================================================================================
+DATABASE SCHEMA
+================================================================================
+
+Tables (via Supabase):
+
+1. profiles (extends auth.users)
+   - id: uuid (FK to auth.users)
+   - email: text
+   - full_name: text
+   - subscription_status: enum ('free', 'premium', 'pro')
+   - stripe_customer_id: text
+   - created_at: timestamp
+
+2. resume_analyses
+   - id: uuid
+   - user_id: uuid (FK to profiles)
+   - original_filename: text
+   - original_text: text
+   - job_description: text
+   - analysis_result: jsonb
+   - ats_score: integer
+   - created_at: timestamp
+
+3. resume_generations
+   - id: uuid
+   - user_id: uuid (FK to profiles)
+   - analysis_id: uuid (FK to resume_analyses)
+   - status: enum ('pending', 'processing', 'completed', 'failed')
+   - rewritten_text: text
+   - docx_url: text
+   - pdf_url: text
+   - generation_model: text
+   - created_at: timestamp
+   - completed_at: timestamp
+
+4. payments
+   - id: uuid
+   - user_id: uuid (FK to profiles)
+   - stripe_payment_intent_id: text
+   - amount: integer
+   - currency: text
+   - status: text
+   - type: enum ('one_time', 'subscription')
+   - created_at: timestamp
+
+================================================================================
+API ENDPOINTS
+================================================================================
+
+Server Actions:
+- analyzeResume(formData) → Free analysis
+- generateResume(analysisId) → Premium rewrite
+- getUserResumes() → Dashboard data
+- updateProfile(data) → Account management
+
+Route Handlers:
+- POST /api/stripe/webhook → Payment confirmations
+- GET /api/download/[id] → Secure file downloads
+- POST /api/kit/webhook → Email event handling
+
+================================================================================
+KEY FEATURES IMPLEMENTATION
+================================================================================
+
+1. FILE PROCESSING
+   - Use formidable for multipart uploads
+   - pdf-parse for PDF text extraction
+   - mammoth for DOCX text extraction
+   - File validation: max 10MB, PDF/DOCX/TXT only
+
+2. AI INTEGRATION
+   - Anthropic SDK with streaming support
+   - Rate limiting per user
+   - Error handling with fallbacks
+   - Token counting for cost management
+
+3. RESUME GENERATION
+   - docx library for DOCX creation
+   - puppeteer for PDF generation
+   - Template-based formatting
+   - ATS-compliant output
+
+4. AUTHENTICATION
+   - Supabase Auth with email/password
+   - Session management via cookies
+   - Protected routes with middleware
+   - RLS policies for data security
+
+5. PAYMENTS
+   - Stripe Checkout for one-time payments
+   - Stripe Billing for subscriptions
+   - Webhook handling for confirmations
+   - Usage tracking for limits
+
+6. REAL-TIME UPDATES
+   - Server-Sent Events for generation progress
+   - Optimistic UI updates
+   - Background job status polling
+
+7. EMAIL MARKETING (Kit Integration)
+   - API Key authentication (V4 API)
+   - Inline lead capture forms (no popups)
+   - Strategic placement:
+     - After free analysis results
+     - Footer newsletter signup
+     - Dashboard sidebar
+   - Automated email sequences:
+     - Welcome series for new signups
+     - Free resume tips (7-day series)
+     - Premium upsell campaigns
+     - Re-engagement for inactive users
+   - Tags: free_user, paid_user, churned_user
+   - Custom fields: last_analysis_date, resume_count
+
+8. EMAIL TEMPLATES (Kit)
+   - Welcome Email: Clean, branded introduction
+   - Analysis Complete: Summary with CTA to upgrade
+   - Payment Success: Receipt and next steps
+   - Resume Ready: Download links with tips
+   - Weekly Tips: Value-driven content series
+   - Win-back Campaign: Special offers for inactive users
+
+9. MOBILE-FIRST DESIGN
+   - Single-column layouts throughout
+   - Large touch targets (min 44px)
+   - Simplified navigation with hamburger menu
+   - Mobile-optimized file upload (camera/files)
+   - Swipe gestures for dashboard navigation
+   - Progressive enhancement approach
+   - Viewport meta tags for proper scaling
+   - Touch-friendly form inputs
+
+10. ADMIN DASHBOARD FEATURES
+    - User Management:
+      - View all users with filters
+      - Manual account deletion
+      - Subscription management
+      - Issue refunds directly
+    - Analytics Dashboard:
+      - Real-time user count
+      - Conversion funnel metrics
+      - Revenue tracking
+      - AI usage and costs
+      - Popular job descriptions
+    - System Monitoring:
+      - API health checks
+      - Error logs
+      - Queue status
+      - Storage usage
+    - Content Management:
+      - Export user data
+      - Bulk email campaigns
+      - Feature flags
+
+================================================================================
+SECURITY REQUIREMENTS
+================================================================================
+
+1. Authentication
+   - HttpOnly cookies for sessions
+   - CSRF protection
+   - Rate limiting on auth endpoints
+
+2. File Handling
+   - Virus scanning on uploads
+   - Sanitize filenames
+   - Secure storage in Supabase
+   - File Retention Policy:
+     - Active subscribers: Files retained during subscription
+     - Cancelled subscribers: 6 months after cancellation
+     - One-time purchases: 6 months from purchase date
+     - Automated cleanup job for expired files
+
+3. API Security
+   - API route protection
+   - Request validation
+   - Input sanitization
+   - SQL injection prevention (via Supabase)
+
+4. Data Privacy
+   - Encrypt sensitive data at rest
+   - PII handling compliance
+   - Data retention policies (6 months)
+   - GDPR compliance features:
+     - Right to deletion
+     - Data export on request
+     - Privacy policy consent
+     - Cookie consent banner
+   - User data deletion includes:
+     - Supabase records
+     - Stored files
+     - Stripe customer data
+     - Kit subscriber removal
+
+================================================================================
+PERFORMANCE REQUIREMENTS
+================================================================================
+
+1. Page Load
+   - LCP < 2.5s
+   - FID < 100ms
+   - CLS < 0.1
+
+2. API Response Times
+   - Analysis: < 5s
+   - Generation: < 30s
+   - File upload: < 3s
+
+3. Scalability
+   - Handle 1000 concurrent users
+   - Queue system for AI requests
+   - CDN for static assets
+   - Database connection pooling
+
+================================================================================
+AUTOMATED TESTING STRATEGY
+================================================================================
+
+1. Testing Framework
+   - Primary: Playwright (better Docker support than Puppeteer)
+   - E2E Testing: Cypress for complex user flows
+   - Unit Testing: Jest + React Testing Library
+   - API Testing: Supertest
+   - Visual Regression: Percy or Chromatic
+
+2. Test Automation Suite
+   - Puppeteer MCP for development testing
+   - Test data fixtures:
+     - Sample resumes (PDF/DOCX) in /tests/fixtures
+     - Job descriptions for various industries
+     - Test user accounts with different states
+   - Automated test flows:
+     - Free analysis flow (upload → analysis → results)
+     - Registration → Payment → Generation flow
+     - Dashboard interactions
+     - Mobile responsiveness checks
+
+3. Docker Testing Configuration
+   - Separate docker-compose.test.yml
+   - Test container with Playwright pre-installed
+   - Headless Chrome for CI/CD
+   - Network isolation for webhook testing
+   - Test database with seed data
+
+4. Development Testing Scripts
+   ```bash
+   # Quick smoke test
+   npm run test:smoke
+   
+   # Full E2E suite
+   npm run test:e2e
+   
+   # Watch mode for development
+   npm run test:watch
+   
+   # Visual regression
+   npm run test:visual
+   ```
+
+5. Automated Test Scenarios
+   - CRITICAL PATH TESTS:
+     a) Free Analysis Flow
+        - Upload valid resume
+        - Upload invalid file types
+        - Large file handling
+        - With/without job description
+        - Verify ATS score calculation
+     
+     b) Payment Flow
+        - Stripe test cards (success/decline)
+        - Webhook processing
+        - Subscription vs one-time
+     
+     c) Generation Flow
+        - Queue processing
+        - Download verification
+        - Retry mechanisms
+
+6. Test Data Management
+   - Reset test database before each suite
+   - Use REAL AI services (Claude/OpenAI) for accurate testing
+   - Stripe test mode with real API calls
+   - Kit API test environment with real endpoints
+   - Test-specific accounts to avoid production data
+
+7. Continuous Testing
+   - Pre-commit hooks for unit tests
+   - GitHub Actions for full suite
+   - Nightly regression tests
+   - Performance benchmarks
+
+8. MCP Puppeteer Integration
+   - Auto-fill forms during development
+   - Screenshot comparisons
+   - Accessibility audits
+   - Performance metrics collection
+   - Mobile device emulation
+
+9. Real Service Testing Strategy
+   - AI Testing:
+     - Use actual Claude/OpenAI APIs
+     - Set daily spending limits ($5-10)
+     - Cache responses for repeated tests
+     - Monitor token usage
+   
+   - Stripe Testing:
+     - Use Stripe test mode (real API)
+     - Test cards that trigger various scenarios
+     - Real webhook endpoints
+     - Verify actual payment intents
+   
+   - Kit Testing:
+     - Separate test account with real API
+     - Test list for email verification
+     - Actual automation triggers
+     - Monitor email delivery
+
+10. Development Automation Scripts
+   ```typescript
+   // Quick test resume upload
+   await testUploadResume('software-engineer');
+   
+   // Test full user journey
+   await testUserJourney({
+     resumePath: './fixtures/valid-resume.pdf',
+     jobDescription: 'Senior React Developer...',
+     email: 'test@example.com',
+     paymentMethod: 'card_4242'
+   });
+   
+   // Batch test multiple scenarios
+   await batchTestScenarios([
+     'new-user-flow',
+     'returning-user',
+     'failed-payment',
+     'large-file-upload'
+   ]);
+   ```
+
+10. Test Environment Variables
+    - TESTING=true (identify test runs)
+    - USE_REAL_AI=true (actual API calls)
+    - STRIPE_TEST_MODE=true (test keys)
+    - KIT_TEST_MODE=true (test account)
+    - SEND_TEST_EMAILS=true (verify delivery)
+    - AI_TEST_LIMIT=100 (cost control)
+
+================================================================================
+ENVIRONMENT URLS & CONFIGURATION
+================================================================================
+
+1. Development
+   - App: http://localhost:3000
+   - Stripe Webhooks: Via Stripe CLI forwarding
+   - Kit Webhooks: Use ngrok if needed
+   - Database: Local Supabase or cloud dev instance
+
+2. Staging (Vercel Preview)
+   - App: https://resumeably-[branch]-[hash].vercel.app
+   - Webhooks: Use preview URLs for testing
+   - Database: Staging Supabase project
+
+3. Production
+   - App: https://resumeably.ai
+   - API Base: https://resumeably.ai/api
+   - Stripe Webhook: https://resumeably.ai/api/stripe/webhook
+   - Kit Webhook: https://resumeably.ai/api/kit/webhook
+   - Database: Production Supabase project
+
+4. Email Configuration
+   - Admin Email: inquire@resumeably.ai (full admin access)
+   - From Domain: mail@resumeably.ai
+   - Support Email: support@resumeably.ai
+   - DNS Records: SPF, DKIM, DMARC for deliverability
+
+================================================================================
+VERSION CONTROL & GIT WORKFLOW
+================================================================================
+
+1. Git Commit Strategy
+   - Commit after EVERY major feature completion
+   - Commit message format: [TYPE] Brief description
+     - [FEAT] New feature
+     - [FIX] Bug fix
+     - [REFACTOR] Code refactoring
+     - [STYLE] UI/UX changes
+     - [DOCS] Documentation
+     - [TEST] Testing
+     - [CHORE] Maintenance
+   
+2. Detailed Commit Messages
+   - First line: Type and brief summary (50 chars max)
+   - Blank line
+   - Detailed description including:
+     - What was changed
+     - Why it was changed
+     - Any breaking changes
+     - Testing performed
+     - Next steps
+
+3. Branch Strategy
+   - main: Production-ready code
+   - develop: Integration branch
+   - feature/*: New features
+   - fix/*: Bug fixes
+   - hotfix/*: Emergency fixes
+
+4. Commit Checkpoints (REQUIRED)
+   - After completing each user flow
+   - After integrating each external service
+   - After major UI components
+   - Before and after refactoring
+   - After fixing critical bugs
+   - End of each development day
+
+================================================================================
+DOCKER CONFIGURATION
+================================================================================
+
+1. Development Environment
+   - Multi-stage Dockerfile for optimized builds
+   - docker-compose.yml with all services:
+     - Next.js app (port 3000)
+     - Stripe CLI for webhook testing
+     - Redis (Upstash local simulation)
+     - PostgreSQL (local Supabase simulation)
+   - Hot reload enabled with volume mounts
+   - Environment variables via .env file
+
+2. Docker Requirements
+   - MUST rebuild images on ANY code change: docker-compose build --no-cache
+   - Volumes for persistent data (uploads, generated files)
+   - Health checks for all services
+   - Automatic restart policies
+
+3. Stripe CLI Integration
+   - Stripe CLI included in Docker for webhook testing
+   - Local webhook forwarding: stripe listen --forward-to localhost:3000/api/stripe/webhook
+   - Production webhook: https://resumeably.ai/api/stripe/webhook
+   - Test mode enabled by default
+
+4. Testing Container Services
+   - Playwright container for E2E tests
+   - Chrome/Firefox browsers pre-installed
+   - Video recording for failed tests
+   - Real network connections (no mocking)
+   - Shared volume for test artifacts
+   - Cost monitoring for API usage
+
+================================================================================
+DEPLOYMENT STRATEGY
+================================================================================
+
+1. Environment Setup
+   - Development: Docker with docker-compose (localhost:3000)
+   - Staging: Vercel Preview (auto-generated URLs)
+   - Production: Vercel (resumeably.ai)
+
+2. Domain Configuration
+   - Primary: resumeably.ai
+   - DNS: Vercel DNS or Cloudflare
+   - SSL: Automatic via Vercel
+   - Webhooks:
+     - Stripe: https://resumeably.ai/api/stripe/webhook
+     - Kit: https://resumeably.ai/api/kit/webhook
+
+3. CI/CD Pipeline
+   - GitHub Actions for tests
+   - Docker build verification
+   - Automatic deployments on merge
+   - Environment variable management
+   - Database migrations via Supabase
+
+4. Production Webhook Setup
+   - Stripe Dashboard:
+     - Add endpoint: https://resumeably.ai/api/stripe/webhook
+     - Events: payment_intent.succeeded, customer.subscription.*
+   - Kit Dashboard:
+     - Webhook URL: https://resumeably.ai/api/kit/webhook
+     - Events: subscriber.created, subscriber.updated
+
+5. Monitoring & Analytics
+   - Vercel Analytics
+   - Google Analytics 4 (GA4)
+   - Sentry for error tracking
+   - Stripe webhook monitoring
+   - Kit email analytics
+   - Uptime monitoring (resumeably.ai)
+   - Custom event tracking:
+     - Free analysis completions
+     - Conversion to paid
+     - File downloads
+     - User retention
+
+================================================================================
+MVP REQUIREMENTS (PHASE 1)
+================================================================================
+
+Must Have:
+1. Homepage with upload form - along with features and benefits of a free resume analysis
+2. Free AI analysis
+3. User registration/login - 
+4. One-time payment or subscription flow
+5. Resume generation (DOCX/PDF)
+6. Basic dashboard with resume history
+
+Nice to Have:
+1. The ability to re-generate a resume a reasonable amount of times for free, accepting user input with requested changes. Max of 10 rewrites for the SAME JOB only.
+2. Advanced email sequences with Kit
+3. Resume templates, tips, interview strategies, common interview questions, etc. Basically an interview and getting hired guide. 
+4. Batch processing
+
+Won't Have (Phase 1):
+1. 
+2. Cover letter generation
+3. LinkedIn optimization
+4. API access
+
+================================================================================
+SUCCESS METRICS
+================================================================================
+
+1. User Metrics
+   - Conversion rate: Free → Paid (target: 5%)
+   - User retention: 30-day (target: 40%)
+   - NPS score (target: 50+)
+
+2. Technical Metrics
+   - Uptime: 99.9%
+   - Generation success rate: 95%+
+   - Average generation time: <20s
+   - Average generation time for final resume: <60s
+
+3. Business Metrics
+   - MRR growth: 20% month-over-month
+   - CAC < $10
+   - LTV > $50
+
+================================================================================
+TIMELINE
+================================================================================
+
+Day 1-2: Core Setup
+- Next.js project setup
+- Supabase integration
+- Basic UI components
+- Authentication flow
+
+Day 3-4: Free Analysis
+- File upload handling
+- AI integration
+- Results display
+- Database schema
+
+Day 5-6: Payment & Generation
+- Stripe integration
+- Premium generation flow
+- File generation
+- Dashboard
+
+Day 7-8: Polish & Launch
+- Error handling
+- Performance optimization
+- Testing
+- Deployment
+
+================================================================================
+ERROR HANDLING & FALLBACKS
+================================================================================
+
+1. AI Service Failures
+   - Primary: Claude API (Anthropic)
+   - Fallback: OpenAI GPT-4
+   - If both fail: Queue for retry with user notification
+   - Max retries: 3 with exponential backoff
+   - User communication: Clear error messages with ETA
+
+2. Payment Failures
+   - Stripe webhook retry mechanism
+   - Manual reconciliation dashboard
+   - Email notification on failed payments
+   - Grace period for subscriptions
+
+3. File Processing Errors
+   - Corrupted file detection
+   - Alternative text extraction methods
+   - Manual text input option as last resort
+   - Clear error messages for unsupported formats
+
+================================================================================
+AI QUALITY REQUIREMENTS
+================================================================================
+
+1. Free Analysis (Claude 3.5 Haiku)
+   - Comprehensive ATS score calculation (1-100)
+   - Minimum 5 specific, actionable recommendations
+   - Keyword gap analysis with exact missing terms
+   - Industry-specific best practices
+   - Formatting issues detection
+   - Skills assessment and suggestions
+   - Clear value even without payment
+
+2. Premium Rewrite (Claude 4 Sonnet)
+   - MUST follow BANGER_BLUEPRINT.md exactly
+   - Intelligent content enhancement while maintaining truth
+   - Perfect keyword optimization for target role
+   - Metric generation assistance (with user confirmation)
+   - Multiple variations for key sections
+   - ATS score guarantee of 85+ after rewrite
+
+3. AI Prompt Engineering
+   - Structured prompts with clear examples
+   - Role-specific knowledge injection
+   - Consistent output formatting
+   - Error detection and self-correction
+
+================================================================================
+
+Additional Context: 
+"
+Final resume generation must follow our "Banger Resume" blueprint referenced in BANGER_BLUEPRINT.md - no exceptions
+Initial free analysis must be valuable and provide actionable insights. User should be able to see the ATS score and recommendations for improvement. User should feel satisfied even if they dont pay for the premium rewrite. This is sort of a freemium model.
+
+Additional Instructions: 
+
+1. You must always use the latest version of Next.js, React, and other dependencies. 
+2. You must always use the available MCP server first for Supabase, Stripe, Context7, etc. If the MCP server is not available, you must use the available alternative.
+3. You must always use the latest version of Anthropic SDK and OpenAI SDK.
+4. You must always use the latest version of pdf-parse and mammoth.
+5. You must always use the latest version of formidable.
+6. You must always use the latest version of docx.
+7. You must always use the latest version of puppeteer.
+8. You must always use the latest version of shadcn/ui.
+9. You must always use the latest version of axios.
+10. You must always use the latest version of dotenv.
+11. You must always use the latest version of @supabase/supabase-js.
+12. You must always use the latest version of @stripe/stripe-js.
+13. You must always use the latest version of @anthropic/anthropic-sdk.
+14. You must always use the latest version of @openai/openai.
+15. You must always use the latest version of @vercel/queue.
+16. You must build in extensive logging and error handling for easier debugging and troubleshooting.
+17. You must build in extensive monitoring and analytics for easier tracking and optimization.
+18. You must build in extensive security measures for easier protection and compliance.
+19. You must build in extensive performance optimization for easier scalability and efficiency.
+20. You must build in extensive accessibility features for easier inclusivity and compliance.
+21. You must build in extensive user experience features for easier engagement and satisfaction.
+22. You must build in extensive documentation for easier maintenance and updates.
+23. You must build in extensive testing and quality assurance for easier reliability and trustworthiness.
+24. You must build in extensive backup and recovery for easier protection and continuity.
+25. You must build in extensive monitoring and alerting for easier detection and response.
+26. You must build a super simple, easy to use, but magnficantly amazing looking website, super modern, and super fast.
+27. You must commit to Git after every major accomplishment with detailed commit messages.
+28. You must use Git branches appropriately for feature development.
+29. You must never implement exit popups or other intrusive UI patterns.
+30. You must implement comprehensive automated testing using Playwright and the Puppeteer MCP server.
+31. You must create test fixtures and automated flows to avoid manual testing repetition.
+32. You must use docker-compose.test.yml for isolated test environments.
+33. You must use REAL external services (AI, Stripe, Kit) during testing to ensure actual functionality.
+34. You must implement visual regression testing for UI changes.
+35. You must use test-specific API keys and accounts to avoid affecting production data.
+36. You must implement cost controls for AI API usage during testing.
+37. You must configure production webhooks to use https://resumeably.ai domain.
+38. You must set up proper DNS and email records for resumeably.ai before launch.
+39. You must implement admin dashboard with analytics for inquire@resumeably.ai account.
+40. You must implement user data deletion that cancels Stripe subscriptions.
+41. You must implement file retention policy (6 months for all users).
+42. You must add Google Analytics 4 tracking for conversion metrics.
+
+
+
