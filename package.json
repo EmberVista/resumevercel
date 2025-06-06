@@ -1,0 +1,46 @@
+{
+  "name": "resumeably-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.53.0",
+    "@hookform/resolvers": "^5.0.1",
+    "@stripe/stripe-js": "^7.3.1",
+    "@supabase/supabase-js": "^2.50.0",
+    "@upstash/redis": "^1.35.0",
+    "axios": "^1.9.0",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "docx": "^9.5.0",
+    "formidable": "^3.5.4",
+    "lucide-react": "^0.513.0",
+    "mammoth": "^1.9.1",
+    "next": "15.3.3",
+    "openai": "^5.1.1",
+    "pdf-parse": "^1.1.1",
+    "puppeteer": "^24.10.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-hook-form": "^7.57.0",
+    "stripe": "^18.2.1",
+    "tailwind-merge": "^3.3.0",
+    "zod": "^3.25.56"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

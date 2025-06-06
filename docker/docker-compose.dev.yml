@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ..:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+    env_file:
+      - ../.env.local
+    command: npm run dev
+    restart: unless-stopped
+    networks:
+      - resumeably-network
+
+  stripe-cli:
+    image: stripe/stripe-cli:latest
+    command: listen --forward-to http://app:3000/api/stripe/webhook --skip-verify
+    environment:
+      - STRIPE_API_KEY=${STRIPE_SECRET_KEY}
+    depends_on:
+      - app
+    networks:
+      - resumeably-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - resumeably-network
+
+networks:
+  resumeably-network:
+    driver: bridge
