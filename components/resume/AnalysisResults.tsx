@@ -8,9 +8,10 @@ import LeadCapture from '@/components/email/LeadCapture'
 
 interface AnalysisResultsProps {
   analysis: any
+  isAuthenticated?: boolean
 }
 
-export default function AnalysisResults({ analysis }: AnalysisResultsProps) {
+export default function AnalysisResults({ analysis, isAuthenticated = false }: AnalysisResultsProps) {
   const router = useRouter()
   const [showLeadCapture, setShowLeadCapture] = useState(false)
   
@@ -208,7 +209,16 @@ export default function AnalysisResults({ analysis }: AnalysisResultsProps) {
         </p>
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
           <button
-            onClick={() => router.push('/register')}
+            onClick={() => {
+              if (isAuthenticated) {
+                // Store analysis ID for checkout
+                sessionStorage.setItem('pendingAnalysis', analysis.id)
+                router.push('/checkout?price=' + process.env.NEXT_PUBLIC_STRIPE_SINGLE_PRICE_ID)
+              } else {
+                sessionStorage.setItem('pendingAnalysis', analysis.id)
+                router.push('/register')
+              }
+            }}
             className="rounded-lg bg-white px-8 py-3 font-semibold text-primary hover:bg-gray-100"
           >
             Get Premium Rewrite - $17

@@ -9,6 +9,9 @@ export default async function AnalysisPage({
 }) {
   const supabase = await createClient()
   
+  // Check if user is authenticated
+  const { data: { user } } = await supabase.auth.getUser()
+  
   // Fetch analysis data
   const { data: analysis, error } = await supabase
     .from('resume_analyses')
@@ -23,7 +26,7 @@ export default async function AnalysisPage({
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <AnalysisResults analysis={analysis} />
+        <AnalysisResults analysis={analysis} isAuthenticated={!!user} />
       </div>
     </div>
   )

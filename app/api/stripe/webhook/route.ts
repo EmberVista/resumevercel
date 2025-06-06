@@ -70,13 +70,28 @@ export async function POST(request: NextRequest) {
 
         // If there's an analysis ID, trigger resume generation
         if (analysisId && session.payment_status === 'paid') {
-          await supabase
+          const { data: generation } = await supabase
             .from('resume_generations')
             .insert({
               user_id: userId,
               analysis_id: analysisId,
               status: 'pending',
             })
+            .select('id')
+            .single()
+
+          // Trigger generation process
+          if (generation) {
+            // In production, you'd use a queue here
+            // For now, we'll call the generation API directly
+            fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/generate`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ generationId: generation.id }),
+            }).catch(err => console.error('Failed to trigger generation:', err))
+          }
         }
         break
       }
