@@ -5,8 +5,9 @@ import AnalysisResults from '@/components/resume/AnalysisResults'
 export default async function AnalysisPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
+  const { id } = await params
   const supabase = await createClient()
   
   // Check if user is authenticated
@@ -16,7 +17,7 @@ export default async function AnalysisPage({
   const { data: analysis, error } = await supabase
     .from('resume_analyses')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (error || !analysis) {

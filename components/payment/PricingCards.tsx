@@ -62,7 +62,7 @@ export default function PricingCards() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const supabase = createClient()
 
-  const handleCheckout = async (priceId: string | null, planName: string) => {
+  const handleCheckout = async (priceId: string | null | undefined, planName: string) => {
     if (!priceId) {
       router.push('/')
       return

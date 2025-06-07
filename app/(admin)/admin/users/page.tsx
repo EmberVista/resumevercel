@@ -5,8 +5,9 @@ import { Search, Filter } from 'lucide-react'
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: { search?: string; status?: string }
+  searchParams: Promise<{ search?: string; status?: string }>
 }) {
+  const params = await searchParams
   const supabase = await createServiceRoleClient()
   
   // Build query
@@ -16,12 +17,12 @@ export default async function AdminUsersPage({
     .order('created_at', { ascending: false })
   
   // Apply filters
-  if (searchParams.status && searchParams.status !== 'all') {
-    query = query.eq('subscription_status', searchParams.status)
+  if (params.status && params.status !== 'all') {
+    query = query.eq('subscription_status', params.status)
   }
   
-  if (searchParams.search) {
-    query = query.or(`email.ilike.%${searchParams.search}%,full_name.ilike.%${searchParams.search}%`)
+  if (params.search) {
+    query = query.or(`email.ilike.%${params.search}%,full_name.ilike.%${params.search}%`)
   }
   
   const { data: users } = await query
@@ -39,7 +40,7 @@ export default async function AdminUsersPage({
               type="text"
               name="search"
               placeholder="Search by email or name..."
-              defaultValue={searchParams.search}
+              defaultValue={params.search}
               className="w-full rounded-lg border bg-background pl-10 pr-4 py-2 text-sm"
             />
           </div>
@@ -54,7 +55,7 @@ export default async function AdminUsersPage({
         <form className="flex gap-2" action="/admin/users">
           <select
             name="status"
-            defaultValue={searchParams.status || 'all'}
+            defaultValue={params.status || 'all'}
             className="rounded-lg border bg-background px-4 py-2 text-sm"
             onChange={(e) => e.target.form?.submit()}
           >
@@ -104,7 +105,7 @@ export default async function AdminUsersPage({
                   <td className="p-4 text-sm">{user.resume_analyses?.[0]?.count || 0}</td>
                   <td className="p-4 text-sm">{user.resume_generations?.[0]?.count || 0}</td>
                   <td className="p-4 text-sm">{user.payments?.[0]?.count || 0}</td>
-                  <td className="p-4 text-sm">{formatDate(user.created_at)}</td>
+                  <td className="p-4 text-sm">{user.created_at ? formatDate(user.created_at) : '-'}</td>
                   <td className="p-4">
                     <div className="flex gap-2">
                       <a

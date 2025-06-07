@@ -1,7 +1,7 @@
 import { queueManager, QUEUES, Job } from '../client'
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { rewriteWithAI } from '@/lib/ai/rewriter'
-import { generateResumeFiles } from '@/lib/utils/resume-generator'
+import { rewriteResume } from '@/lib/ai/rewriter'
+import { generateDOCX, generatePDF } from '@/lib/utils/resume-generator'
 import { trackResumeGenerated } from '@/lib/kit/automations'
 
 export interface ResumeGenerationJobData {
@@ -41,14 +41,17 @@ export async function processResumeGenerationJob(job: Job<ResumeGenerationJobDat
     
     // Rewrite resume with AI
     console.log(`Processing resume generation ${generationId}`)
-    const rewrittenContent = await rewriteWithAI(
-      analysis.original_text,
-      analysis.job_description,
-      analysis.analysis_result
-    )
+    const rewrittenContent = await rewriteResume({
+      originalText: analysis.original_text,
+      jobDescription: analysis.job_description || undefined,
+      analysisResult: analysis.analysis_result
+    })
     
     // Generate DOCX and PDF files
-    const { docxBuffer, pdfBuffer } = await generateResumeFiles(rewrittenContent)
+    const [docxBuffer, pdfBuffer] = await Promise.all([
+      generateDOCX(rewrittenContent),
+      generatePDF(rewrittenContent)
+    ])
     
     // Upload files to Supabase storage
     const timestamp = Date.now()

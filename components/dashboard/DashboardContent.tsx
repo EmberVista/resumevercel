@@ -124,7 +124,7 @@ export default function DashboardContent({ user, profile, analyses, generations 
                       ATS Score: <span className="font-medium text-primary">{analysis.ats_score}/100</span>
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Analyzed on {formatDate(analysis.created_at)}
+                      Analyzed on {analysis.created_at ? formatDate(analysis.created_at) : 'Unknown'}
                     </p>
                   </div>
                   <FileText className="h-5 w-5 text-muted-foreground" />
@@ -167,7 +167,7 @@ export default function DashboardContent({ user, profile, analyses, generations 
                       Status: <span className="capitalize">{generation.status}</span>
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Created on {formatDate(generation.created_at)}
+                      Created on {generation.created_at ? formatDate(generation.created_at) : 'Unknown'}
                     </p>
                   </div>
                   

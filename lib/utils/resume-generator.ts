@@ -61,7 +61,7 @@ export async function generatePDF(resumeText: string): Promise<Buffer> {
       printBackground: true,
     })
 
-    return pdf
+    return Buffer.from(pdf)
   } finally {
     await browser.close()
   }
@@ -116,7 +116,7 @@ function parseResumeSections(resumeText: string): ResumeSection[] {
       
       // Start new section
       currentSection = { 
-        type: sectionHeaders[matchedHeader] as any, 
+        type: sectionHeaders[matchedHeader as keyof typeof sectionHeaders] as any, 
         content: '' 
       }
       currentContent = []

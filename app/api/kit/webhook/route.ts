@@ -5,7 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const headersList = headers()
+    const headersList = await headers()
     
     // Verify webhook signature if configured
     const webhookSecret = process.env.KIT_WEBHOOK_SECRET
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
         if (profile) {
           await supabase
             .from('profiles')
-            .update({ email_marketing_consent: false })
+            .update({ email_marketing_consent: false } as any)
             .eq('id', profile.id)
         }
         break

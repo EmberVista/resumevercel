@@ -82,11 +82,15 @@ export class QueueManager {
   // Get the next job from the queue
   async getNextJob(queue: QueueName): Promise<Job | null> {
     // First check delayed jobs
-    const delayedJobs = await this.redis.zrangebyscore(
+    const delayedJobs = await this.redis.zrange(
       `queue:${queue}:delayed`,
       0,
       Date.now(),
-      { limit: { offset: 0, count: 1 } }
+      {
+        byScore: true,
+        count: 1,
+        offset: 0
+      }
     )
     
     if (delayedJobs.length > 0) {
@@ -95,11 +99,11 @@ export class QueueManager {
       await this.redis.lpush(`queue:${queue}:ready`, jobId)
     }
     
-    // Get job from ready queue
-    const jobId = await this.redis.rpoplpush(
-      `queue:${queue}:ready`,
-      `queue:${queue}:processing`
-    )
+    // Get job from ready queue (using two-step approach since rpoplpush isn't available)
+    const jobId = await this.redis.rpop(`queue:${queue}:ready`)
+    if (jobId) {
+      await this.redis.lpush(`queue:${queue}:processing`, jobId)
+    }
     
     if (!jobId) return null
     
@@ -109,9 +113,9 @@ export class QueueManager {
     
     return {
       ...jobData,
-      createdAt: new Date(jobData.createdAt),
-      updatedAt: new Date(jobData.updatedAt),
-      completedAt: jobData.completedAt ? new Date(jobData.completedAt) : undefined,
+      createdAt: new Date(jobData.createdAt as string),
+      updatedAt: new Date(jobData.updatedAt as string),
+      completedAt: jobData.completedAt ? new Date(jobData.completedAt as string) : undefined,
     } as Job
   }
   

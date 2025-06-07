@@ -36,7 +36,7 @@ export async function analyzeResume(formData: FormData) {
         original_filename: file.name,
         original_text: extractedText,
         job_description: jobDescription,
-        analysis_result: analysis,
+        analysis_result: analysis as any,
         ats_score: analysis.atsScore,
       })
       .select('id')

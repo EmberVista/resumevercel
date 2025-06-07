@@ -124,7 +124,7 @@ export default async function AdminDashboard() {
                 <div>
                   <p className="text-sm font-medium">{user.email}</p>
                   <p className="text-xs text-muted-foreground">
-                    {user.subscription_status} • {new Date(user.created_at).toLocaleDateString()}
+                    {user.subscription_status} • {user.created_at && new Date(user.created_at).toLocaleDateString()}
                   </p>
                 </div>
                 <Users className="h-4 w-4 text-muted-foreground" />

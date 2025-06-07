@@ -4,10 +4,10 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const generationId = params.id
+    const { id: generationId } = await params
     const fileType = request.nextUrl.searchParams.get('type') || 'docx'
     
     // Verify user is authenticated

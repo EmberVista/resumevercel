@@ -5,8 +5,9 @@ import { DollarSign, CreditCard, CheckCircle, XCircle } from 'lucide-react'
 export default async function AdminPaymentsPage({
   searchParams,
 }: {
-  searchParams: { status?: string; type?: string }
+  searchParams: Promise<{ status?: string; type?: string }>
 }) {
+  const params = await searchParams
   const supabase = await createServiceRoleClient()
   
   // Build query
@@ -17,12 +18,12 @@ export default async function AdminPaymentsPage({
     .limit(100)
   
   // Apply filters
-  if (searchParams.status && searchParams.status !== 'all') {
-    query = query.eq('status', searchParams.status)
+  if (params.status && params.status !== 'all') {
+    query = query.eq('status', params.status)
   }
   
-  if (searchParams.type && searchParams.type !== 'all') {
-    query = query.eq('type', searchParams.type)
+  if (params.type && params.type !== 'all') {
+    query = query.eq('type', params.type)
   }
   
   const { data: payments } = await query
@@ -85,7 +86,7 @@ export default async function AdminPaymentsPage({
         <form className="flex gap-2" action="/admin/payments">
           <select
             name="status"
-            defaultValue={searchParams.status || 'all'}
+            defaultValue={params.status || 'all'}
             className="rounded-lg border bg-background px-4 py-2 text-sm"
             onChange={(e) => e.target.form?.submit()}
           >
@@ -97,7 +98,7 @@ export default async function AdminPaymentsPage({
           
           <select
             name="type"
-            defaultValue={searchParams.type || 'all'}
+            defaultValue={params.type || 'all'}
             className="rounded-lg border bg-background px-4 py-2 text-sm"
             onChange={(e) => e.target.form?.submit()}
           >
@@ -125,7 +126,7 @@ export default async function AdminPaymentsPage({
             <tbody>
               {payments?.map((payment) => (
                 <tr key={payment.id} className="border-b">
-                  <td className="p-4 text-sm">{formatDate(payment.created_at)}</td>
+                  <td className="p-4 text-sm">{payment.created_at ? formatDate(payment.created_at) : '-'}</td>
                   <td className="p-4">
                     <div>
                       <p className="text-sm font-medium">{payment.profiles?.email}</p>
