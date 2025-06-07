@@ -102,9 +102,9 @@ export default function UploadForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6 relative z-20">
       {/* Input Method Toggle */}
-      <div className="flex gap-2 p-1 bg-muted rounded-lg">
+      <div className="flex gap-2 p-1 bg-muted rounded-lg relative z-10">
         <button
           type="button"
           onClick={() => {
@@ -112,10 +112,10 @@ export default function UploadForm() {
             setResumeText('')
           }}
           className={cn(
-            "flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium transition-colors",
+            "flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium transition-colors cursor-pointer",
             inputMethod === 'file' 
               ? "bg-background text-foreground shadow-sm" 
-              : "text-muted-foreground hover:text-foreground"
+              : "text-muted-foreground hover:text-foreground hover:bg-background/50"
           )}
         >
           <FileUp className="h-4 w-4" />
@@ -128,10 +128,10 @@ export default function UploadForm() {
             setFile(null)
           }}
           className={cn(
-            "flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium transition-colors",
+            "flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium transition-colors cursor-pointer",
             inputMethod === 'text' 
               ? "bg-background text-foreground shadow-sm" 
-              : "text-muted-foreground hover:text-foreground"
+              : "text-muted-foreground hover:text-foreground hover:bg-background/50"
           )}
         >
           <Type className="h-4 w-4" />
@@ -234,7 +234,8 @@ export default function UploadForm() {
           value={jobDescription}
           onChange={(e) => setJobDescription(e.target.value)}
           placeholder="Paste the job description here for more targeted recommendations..."
-          className="w-full min-h-[120px] rounded-lg border border-input bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          className="w-full min-h-[120px] rounded-lg border border-input bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring relative z-10"
+          style={{ position: 'relative', zIndex: 10 }}
         />
         <p className="mt-1 text-xs text-muted-foreground">
           Leave blank for general ATS best practices, or add a job description for targeted analysis

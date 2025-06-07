@@ -9,8 +9,6 @@ export default function HeroSection() {
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-primary/5 to-background">
-      <div className="absolute inset-0 bg-grid-pattern opacity-5" />
-      
       <div className="container mx-auto px-4 py-12 lg:py-24">
         <div className="mx-auto max-w-4xl text-center">
           {/* Hero Content */}
@@ -63,7 +61,7 @@ export default function HeroSection() {
               </p>
             </div>
           ) : (
-            <div className="mx-auto max-w-2xl">
+            <div className="mx-auto max-w-2xl relative z-50">
               <UploadForm />
             </div>
           )}
