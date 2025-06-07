@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { stripe } from '@/lib/stripe/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { updateSubscriberToPaid, updateSubscriberToChurned } from '@/lib/kit/automations'
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
@@ -31,13 +32,20 @@ export async function POST(request: NextRequest) {
 
         // Update user's subscription status
         if (session.mode === 'subscription') {
-          await supabase
+          const { data: profile } = await supabase
             .from('profiles')
             .update({
               subscription_status: 'premium',
               stripe_customer_id: session.customer,
             })
             .eq('id', userId)
+            .select('email')
+            .single()
+          
+          // Update Kit subscriber to paid
+          if (profile?.email) {
+            await updateSubscriberToPaid(profile.email)
+          }
         } else {
           // For one-time payments, update the profile to show they've made a purchase
           const { data: profile } = await supabase
@@ -110,10 +118,17 @@ export async function POST(request: NextRequest) {
 
         if (profile) {
           const status = subscription.status === 'active' ? 'premium' : 'free'
-          await supabase
+          const { data: updatedProfile } = await supabase
             .from('profiles')
             .update({ subscription_status: status })
             .eq('id', profile.id)
+            .select('email')
+            .single()
+          
+          // Update Kit subscriber status
+          if (updatedProfile?.email && status === 'premium') {
+            await updateSubscriberToPaid(updatedProfile.email)
+          }
         }
         break
       }
@@ -130,10 +145,17 @@ export async function POST(request: NextRequest) {
           .single()
 
         if (profile) {
-          await supabase
+          const { data: updatedProfile } = await supabase
             .from('profiles')
             .update({ subscription_status: 'free' })
             .eq('id', profile.id)
+            .select('email')
+            .single()
+          
+          // Update Kit subscriber to churned
+          if (updatedProfile?.email) {
+            await updateSubscriberToChurned(updatedProfile.email)
+          }
         }
         break
       }

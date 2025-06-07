@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { extractTextFromFile } from '@/lib/utils/file-processor'
 import { analyzeWithAI } from '@/lib/ai/analyzer'
 import { AppError } from '@/lib/utils'
+import { trackAnalysisCompleted } from '@/lib/kit/automations'
 
 export async function analyzeResume(formData: FormData) {
   try {
@@ -44,6 +45,11 @@ export async function analyzeResume(formData: FormData) {
     if (dbError) {
       console.error('Database error:', dbError)
       return { error: 'Failed to save analysis. Please try again.' }
+    }
+
+    // Track analysis in Kit if user is logged in
+    if (user?.email) {
+      await trackAnalysisCompleted(user.email, analysis.atsScore)
     }
 
     return { analysisId: data.id }

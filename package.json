@@ -9,7 +9,9 @@
     "lint": "next lint",
     "docker:up": "docker-compose up --build",
     "docker:down": "docker-compose down",
-    "docker:rebuild": "docker-compose build --no-cache && docker-compose up"
+    "docker:rebuild": "docker-compose build --no-cache && docker-compose up",
+    "kit:setup": "tsx scripts/verify-kit-setup.ts",
+    "db:migrate": "tsx scripts/run-migrations.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.53.0",
