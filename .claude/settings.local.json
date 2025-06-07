@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mv:*)",
+      "Bash(true)",
+      "Bash(npx shadcn@latest init:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(git commit:*)",
+      "Bash(chmod:*)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "mcp__supabase__list_organizations",
+      "mcp__supabase__list_projects",
+      "Bash(export:*)",
+      "Bash(find:*)",
+      "mcp__supabase__get_project",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__apply_migration",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__generate_typescript_types",
+      "mcp__supabase__get_project_url",
+      "mcp__supabase__get_anon_key",
+      "Bash(git add:*)",
+      "mcp__stripe__create_price",
+      "mcp__stripe__create_product",
+      "Bash(stripe prices create:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsx:*)",
+      "Bash(docker exec:*)",
+      "Bash(gh auth:*)",
+      "Bash(git config:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)"
+    ],
+    "deny": []
+  },
+  "enabledMcpjsonServers": [
+    "supabase",
+    "stripe",
+    "context7"
+  ]
+}
