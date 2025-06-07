@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import MobileNav from '@/components/ui/mobile-nav'
 
 export default function MarketingLayout({
   children,
@@ -13,7 +14,7 @@ export default function MarketingLayout({
             <span className="text-2xl font-bold">Resumeably.ai</span>
           </Link>
           
-          <nav className="ml-auto flex items-center space-x-4 text-sm font-medium">
+          <nav className="ml-auto hidden md:flex items-center space-x-4 text-sm font-medium">
             <Link
               href="/pricing"
               className="transition-colors hover:text-primary"
@@ -33,6 +34,10 @@ export default function MarketingLayout({
               Sign Up
             </Link>
           </nav>
+          
+          <div className="ml-auto md:hidden">
+            <MobileNav />
+          </div>
         </div>
       </header>
       {children}

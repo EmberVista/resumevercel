@@ -11,7 +11,10 @@
     "docker:down": "docker-compose down",
     "docker:rebuild": "docker-compose build --no-cache && docker-compose up",
     "kit:setup": "tsx scripts/verify-kit-setup.ts",
-    "db:migrate": "tsx scripts/run-migrations.ts"
+    "db:migrate": "tsx scripts/run-migrations.ts",
+    "worker": "tsx scripts/queue-worker.ts",
+    "worker:dev": "tsx --watch scripts/queue-worker.ts",
+    "retention:check": "tsx scripts/check-file-retention.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.53.0",
@@ -48,6 +51,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.3.3",
     "tailwindcss": "^4",
+    "tsx": "^4.19.4",
     "typescript": "^5"
   }
 }

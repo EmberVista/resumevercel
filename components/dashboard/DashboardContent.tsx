@@ -175,7 +175,7 @@ export default function DashboardContent({ user, profile, analyses, generations 
                     <div className="flex space-x-2">
                       {generation.docx_url && (
                         <a
-                          href={generation.docx_url}
+                          href={`/api/download/${generation.id}?type=docx`}
                           download
                           className="flex items-center rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
                           onClick={(e) => e.stopPropagation()}
@@ -186,7 +186,7 @@ export default function DashboardContent({ user, profile, analyses, generations 
                       )}
                       {generation.pdf_url && (
                         <a
-                          href={generation.pdf_url}
+                          href={`/api/download/${generation.id}?type=pdf`}
                           download
                           className="flex items-center rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
                           onClick={(e) => e.stopPropagation()}

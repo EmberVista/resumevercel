@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
-import { rewriteResume } from '@/lib/ai/rewriter'
-import { generateDOCX, generatePDF } from '@/lib/utils/resume-generator'
-import { AppError } from '@/lib/utils'
+import { queueManager, QUEUES } from '@/lib/queue/client'
+import type { ResumeGenerationJobData } from '@/lib/queue/workers/resume-generation'
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,7 +43,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if already processed
+    // Check if already processed or processing
     if (generation.status === 'completed') {
       return NextResponse.json({
         status: 'completed',
@@ -52,106 +51,33 @@ export async function POST(request: NextRequest) {
         pdfUrl: generation.pdf_url,
       })
     }
+    
+    if (generation.status === 'processing') {
+      return NextResponse.json({
+        status: 'processing',
+        message: 'Resume generation is in progress',
+      })
+    }
 
-    // Update status to processing
+    // Add job to queue instead of processing synchronously
+    const jobData: ResumeGenerationJobData = {
+      generationId,
+      userId: user.id,
+      analysisId: generation.analysis_id,
+    }
+    
+    await queueManager.addJob(QUEUES.RESUME_GENERATION, jobData)
+    
+    // Update status to indicate it's queued
     await serviceSupabase
       .from('resume_generations')
       .update({ status: 'processing' })
       .eq('id', generationId)
 
-    try {
-      // Get the analysis data
-      const analysis = generation.resume_analyses
-      
-      // Rewrite the resume using AI
-      const rewrittenText = await rewriteResume({
-        originalText: analysis.original_text,
-        analysisResult: analysis.analysis_result,
-        jobDescription: analysis.job_description,
-      })
-
-      // Generate DOCX
-      const docxBuffer = await generateDOCX(rewrittenText)
-      
-      // Generate PDF
-      const pdfBuffer = await generatePDF(rewrittenText)
-
-      // Upload files to Supabase Storage
-      const timestamp = Date.now()
-      const userId = user.id
-      
-      const docxPath = `resumes/${userId}/${timestamp}_resume.docx`
-      const pdfPath = `resumes/${userId}/${timestamp}_resume.pdf`
-
-      // Upload DOCX
-      const { error: docxError } = await serviceSupabase.storage
-        .from('user-files')
-        .upload(docxPath, docxBuffer, {
-          contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          upsert: false,
-        })
-
-      if (docxError) throw docxError
-
-      // Upload PDF
-      const { error: pdfError } = await serviceSupabase.storage
-        .from('user-files')
-        .upload(pdfPath, pdfBuffer, {
-          contentType: 'application/pdf',
-          upsert: false,
-        })
-
-      if (pdfError) throw pdfError
-
-      // Get public URLs
-      const { data: { publicUrl: docxUrl } } = serviceSupabase.storage
-        .from('user-files')
-        .getPublicUrl(docxPath)
-
-      const { data: { publicUrl: pdfUrl } } = serviceSupabase.storage
-        .from('user-files')
-        .getPublicUrl(pdfPath)
-
-      // Update generation record
-      await serviceSupabase
-        .from('resume_generations')
-        .update({
-          status: 'completed',
-          rewritten_text: rewrittenText,
-          docx_url: docxUrl,
-          pdf_url: pdfUrl,
-          generation_model: 'claude-3-5-sonnet',
-          completed_at: new Date().toISOString(),
-        })
-        .eq('id', generationId)
-
-      return NextResponse.json({
-        status: 'completed',
-        docxUrl,
-        pdfUrl,
-      })
-
-    } catch (error) {
-      console.error('Generation error:', error)
-      
-      // Update status to failed
-      await serviceSupabase
-        .from('resume_generations')
-        .update({ status: 'failed' })
-        .eq('id', generationId)
-
-      if (error instanceof AppError) {
-        return NextResponse.json(
-          { error: error.message },
-          { status: error.statusCode }
-        )
-      }
-
-      return NextResponse.json(
-        { error: 'Failed to generate resume' },
-        { status: 500 }
-      )
-    }
+    return NextResponse.json({
+      status: 'processing',
+      message: 'Resume generation has been queued',
+    })
   } catch (error) {
     console.error('Generate API error:', error)
     return NextResponse.json(

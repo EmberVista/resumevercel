@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { User as UserIcon, LogOut, FileText, CreditCard } from 'lucide-react'
+import { User as UserIcon, LogOut, FileText, CreditCard, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
+import MobileNav from '@/components/ui/mobile-nav'
 
 interface DashboardNavProps {
   user: User
@@ -37,30 +38,41 @@ export default function DashboardNav({ user }: DashboardNavProps) {
               My Resumes
             </Link>
             <Link
-              href="/dashboard/account"
+              href="/dashboard/billing"
               className="flex items-center text-sm font-medium transition-colors hover:text-primary"
             >
               <CreditCard className="mr-2 h-4 w-4" />
               Billing
             </Link>
+            <Link
+              href="/account"
+              className="flex items-center text-sm font-medium transition-colors hover:text-primary"
+            >
+              <Settings className="mr-2 h-4 w-4" />
+              Account
+            </Link>
           </nav>
         </div>
 
         <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2 text-sm">
+          <div className="hidden md:flex items-center space-x-2 text-sm">
             <UserIcon className="h-4 w-4 text-muted-foreground" />
-            <span className="hidden sm:inline-block text-muted-foreground">
+            <span className="text-muted-foreground">
               {user.email}
             </span>
           </div>
           
           <button
             onClick={handleLogout}
-            className="flex items-center text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+            className="hidden md:flex items-center text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
           >
-            <LogOut className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline-block">Logout</span>
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
           </button>
+          
+          <div className="md:hidden">
+            <MobileNav isAuthenticated />
+          </div>
         </div>
       </div>
     </header>
